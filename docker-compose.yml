@@ -17,8 +17,10 @@ networks:
 services:
   db:
     image: mysql
+    container_name: mysql_askbot
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       MYSQL_DATABASE: askbot_db
       MYSQL_USER: askbot_user
@@ -36,15 +38,17 @@ services:
 
   web:
     build: .
+    container_name: qmzaskbot_service
     # command: gunicorn myaskbot.wsgi:application --bind 0.0.0.0:8000
     # command: ls -lha
     # python ./qmzaskbot/manage.py runserver
     volumes:
-      - .:/app
+      - ./app:/app/qmzaskbot
     ports:
       - "8000:8000"
-    depends_on:
-      - db
+    depends_on:   
+      db:
+        condition: service_healthy
     # environment:
       # DATABASE_URL: postgresql://askbot_user:askbot_pass@db:5432/askbot_db
     networks:
@@ -63,12 +67,12 @@ services:
   #   networks:
   #     - askbot_network
 
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - "8080:8080"
-    depends_on:
-      - db
-    networks:
-      - askbot_network
+  # adminer:
+  #   image: adminer
+  #   restart: always
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - db
+  #   networks:
+  #     - askbot_network
