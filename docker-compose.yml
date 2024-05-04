@@ -1,0 +1,74 @@
+version: '3.8'
+
+volumes:
+  mysql_data: 
+          driver: local
+          driver_opts:
+            type: none
+            o: bind
+            device: ./db_data
+  # static_volume:
+  # media_volume:
+
+networks:
+  askbot_network:
+    driver: bridge
+
+services:
+  db:
+    image: mysql
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: askbot_db
+      MYSQL_USER: askbot_user
+      MYSQL_PASSWORD: askbot_pass
+      MYSQL_ROOT_PASSWORD: root_password
+    networks:
+      askbot_network:
+        aliases:
+          - db.localhost
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    # command: gunicorn myaskbot.wsgi:application --bind 0.0.0.0:8000
+    # command: ls -lha
+    # python ./qmzaskbot/manage.py runserver
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    # environment:
+      # DATABASE_URL: postgresql://askbot_user:askbot_pass@db:5432/askbot_db
+    networks:
+      - askbot_network
+
+  # nginx:
+  #   image: nginx:1.19-alpine
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./config/nginx:/etc/nginx/conf.d
+  #     - static_volume:/app/static
+  #     - media_volume:/app/media
+  #   depends_on:
+  #     - web
+  #   networks:
+  #     - askbot_network
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - askbot_network
