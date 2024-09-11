@@ -2,13 +2,17 @@ version: '3.8'
 
 volumes:
   mysql_data: 
-          driver: local
-          driver_opts:
-            type: none
-            o: bind
-            device: ./db_data
-  # static_volume:
-  # media_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./db_data
+  static_data:  # Add a volume for static files
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./app/static
 
 networks:
   askbot_network:
@@ -38,41 +42,25 @@ services:
 
   web:
     build: .
-    container_name: qmzaskbot_service
-    # command: gunicorn myaskbot.wsgi:application --bind 0.0.0.0:8000
-    # command: ls -lha
-    # python ./qmzaskbot/manage.py runserver
+    container_name: askbot_service
+    command: bash -c "cd /app/askbot && /app/askbot/start.sh && gunicorn wsgi:application --bind 0.0.0.0:8000"
     volumes:
-      - ./app:/app/qmzaskbot
-    ports:
-      - "8000:8000"
+      - static_data:/app/askbot/static  # Ensure this is where collectstatic outputs
+    expose:
+      - 8000
     depends_on:   
       db:
         condition: service_healthy
-    # environment:
-      # DATABASE_URL: postgresql://askbot_user:askbot_pass@db:5432/askbot_db
     networks:
       - askbot_network
 
-  # nginx:
-  #   image: nginx:1.19-alpine
-  #   ports:
-  #     - "80:80"
-  #   volumes:
-  #     - ./config/nginx:/etc/nginx/conf.d
-  #     - static_volume:/app/static
-  #     - media_volume:/app/media
-  #   depends_on:
-  #     - web
-  #   networks:
-  #     - askbot_network
-
-  # adminer:
-  #   image: adminer
-  #   restart: always
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     - db
-  #   networks:
-  #     - askbot_network
+  nginx:
+    build: ./nginx
+    volumes:
+      - static_data:/home/app/web/staticfiles  # Ensure this matches where nginx looks for static files
+    ports:
+      - 80:80
+    depends_on:
+      - web
+    networks:
+      - askbot_network
